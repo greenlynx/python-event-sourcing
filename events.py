@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 
 import argparse
+from collections import namedtuple
 import functools
 import itertools
 import json
-import time
+import portalocker
 
 DATA_FILENAME = "data.json"
 
@@ -147,19 +148,21 @@ def do_history(args):
 
 
 def do_soak(args):
-    aggregate_id = "soak_test" + time.time()
+    Args = namedtuple('Args', 'account_id amount')
+    args = Args("soak_test", "1")
+    do_open(args)
 
 
 def write_record(new_record):
     existing_records = read_records()
     all_records = itertools.chain(existing_records, [new_record])
-    with open(DATA_FILENAME, 'wt', encoding='utf8') as file:
+    with portalocker.Lock(DATA_FILENAME, 'wt', encoding='utf8') as file:
         file.write(json.dumps({"events": list(all_records)}, indent=2))
 
 
 def read_records(aggregate_id=None):
     try:
-        with open(DATA_FILENAME, 'rt', encoding='utf8') as file:
+        with portalocker.Lock(DATA_FILENAME, 'rt', encoding='utf8') as file:
             records = json.load(file)["events"]
 
         if aggregate_id:
